@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process';
+import { loadConfig } from '../lib/config.js';
 
 function usage(exitCode = 0) {
   const msg = `RunGuard — runtime safety wrapper for agents.
@@ -10,8 +11,9 @@ Usage:
   runguard exec -- <cmd> [args...]
 
 Options:
-  --cwd <dir>       Working directory
-  --timeout <sec>   Wall-clock timeout (seconds)
+  --cwd <dir>         Working directory
+  --timeout <sec>     Wall-clock timeout (seconds)
+  --config <path>     Config file (default: .runguard.yaml)
 
 Gate A: CLI skeleton only. Enforcement features ship in follow-up milestones.
 `;
@@ -20,7 +22,7 @@ Gate A: CLI skeleton only. Enforcement features ship in follow-up milestones.
 }
 
 function parseArgs(argv) {
-  const out = { cmd: null, cmdArgs: [], cwd: undefined, timeout: undefined };
+  const out = { cmd: null, cmdArgs: [], cwd: undefined, timeout: undefined, configPath: '.runguard.yaml' };
   const args = [...argv];
 
   if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
@@ -45,6 +47,11 @@ function parseArgs(argv) {
       out.timeout = v ? Number(v) : undefined;
       continue;
     }
+    if (a === '--config') {
+      const v = args.shift();
+      out.configPath = v || '.runguard.yaml';
+      continue;
+    }
     return { kind: 'error', message: `Unknown option: ${a}` };
   }
 
@@ -63,13 +70,24 @@ if (parsed.kind === 'error') {
   usage(2);
 }
 
-const timeoutMs = parsed.timeout != null && !Number.isNaN(parsed.timeout)
-  ? Math.round(parsed.timeout * 1000)
+let fileConfig = null;
+try {
+  fileConfig = loadConfig(parsed.configPath).config;
+} catch (e) {
+  process.stderr.write(`runguard: ${e.message}\n`);
+  process.exit(2);
+}
+
+const effectiveTimeoutSec = parsed.timeout ?? fileConfig?.limits?.wallClockSec;
+const effectiveCwd = parsed.cwd ?? fileConfig?.execution?.cwd;
+
+const timeoutMs = effectiveTimeoutSec != null && !Number.isNaN(effectiveTimeoutSec)
+  ? Math.round(effectiveTimeoutSec * 1000)
   : undefined;
 
 const res = spawnSync(parsed.cmd, parsed.cmdArgs, {
   stdio: 'inherit',
-  cwd: parsed.cwd,
+  cwd: effectiveCwd,
   timeout: timeoutMs,
 });
 
