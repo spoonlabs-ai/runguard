@@ -16,4 +16,6 @@ runguard --help
 runguard exec -- node -v
 ```
 
-Gate A: CLI skeleton only. Safety enforcement comes in follow-up issues.
+Gate A: CLI skeleton + locked config schema. Safety enforcement comes in follow-up issues.
+
+- Config schema: `docs/config-schema-v0.1.md`
