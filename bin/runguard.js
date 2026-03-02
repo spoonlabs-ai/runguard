@@ -6,6 +6,7 @@ import { appendFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { loadConfig } from '../lib/config.js';
 import { validateEvent } from '../lib/trace-validate.js';
+import { initRunReceipt } from '../lib/token-accounting.js';
 
 function usage(exitCode = 0) {
   const msg = `RunGuard — runtime safety wrapper for agents.
@@ -92,6 +93,7 @@ const effectiveCwd = parsed.cwd ?? fileConfig?.execution?.cwd;
 const tracePath = resolve(parsed.traceFile);
 const runId = `rg_${randomUUID()}`;
 let seq = 0;
+const receipt = initRunReceipt();
 const cmdAll = [parsed.cmd, ...parsed.cmdArgs];
 
 emitTrace(tracePath, {
@@ -115,7 +117,7 @@ else if (exitCode !== 0) { status = 'error'; }
 
 emitTrace(tracePath, {
   v: '0.1', event: 'run_end', ts: nowIso(), run_id: runId, seq: ++seq,
-  data: { status, exit_code: exitCode, duration_ms: duration, summary: {} },
+  data: { status, exit_code: exitCode, duration_ms: duration, summary: receipt },
 });
 
 if (res.error) {

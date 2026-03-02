@@ -29,6 +29,8 @@ test('run_start + run_end trace events emitted and schema-valid', () => {
   assert.equal(events[0].seq, 1);
   assert.equal(events[1].seq, 2);
   assert.equal(events[0].run_id, events[1].run_id);
+  assert.equal(events[1].data.summary.total_tokens, 0);
+  assert.equal(events[1].data.summary.total_cost_usd, 0);
 
   for (const evt of events) {
     const v = validateEvent(evt);
