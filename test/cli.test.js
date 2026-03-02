@@ -21,6 +21,11 @@ test('exec runs command', () => {
   assert.equal(r.status, 0);
 });
 
+test('exec propagates exit code', () => {
+  const r = spawnSync('node', [bin, 'exec', '--', 'node', '-e', 'process.exit(7)'], { encoding: 'utf-8' });
+  assert.equal(r.status, 7);
+});
+
 test('invalid config fails fast', () => {
   const dir = mkdtempSync(resolve(tmpdir(), 'runguard-test-'));
   const cfg = resolve(dir, '.runguard.yaml');
