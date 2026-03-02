@@ -1,0 +1,13 @@
+{
+  "name": "runguard",
+  "version": "0.0.1",
+  "description": "Runtime safety for agents: watchdog timeouts, budget controls, circuit breakers, structured traces.",
+  "type": "module",
+  "bin": {
+    "runguard": "bin/runguard.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "MIT"
+}
