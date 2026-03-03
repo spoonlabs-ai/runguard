@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { initRunReceipt, ingestLlmCall } from '../lib/token-accounting.js';
+import { initRunReceipt, ingestLlmCall, initBudgetState, evaluateBudget } from '../lib/token-accounting.js';
 import { estimateUsd } from '../lib/pricing.js';
 
 test('estimateUsd uses model table', () => {
@@ -28,4 +28,25 @@ test('provider-reported cost overrides estimate', () => {
     data: { model: 'unknown/model', prompt_tokens: 100, completion_tokens: 100, total_tokens: 200, cost_usd: 0.123456 },
   });
   assert.equal(receipt.total_cost_usd, 0.123456);
+});
+
+test('budget warnings trigger at 80/90 and hard kill at cap', () => {
+  const receipt = initRunReceipt();
+  const budgetState = initBudgetState();
+
+  ingestLlmCall(receipt, { event: 'llm_call', data: { total_tokens: 800 } });
+  const b1 = evaluateBudget(receipt, { tokenMax: 1000 }, budgetState);
+  assert.deepEqual(b1.warnings.map((w) => w.threshold), [0.8]);
+  assert.equal(b1.kill, null);
+
+  ingestLlmCall(receipt, { event: 'llm_call', data: { total_tokens: 100 } });
+  const b2 = evaluateBudget(receipt, { tokenMax: 1000 }, budgetState);
+  assert.deepEqual(b2.warnings.map((w) => w.threshold), [0.9]);
+  assert.equal(b2.kill, null);
+
+  ingestLlmCall(receipt, { event: 'llm_call', data: { total_tokens: 100 } });
+  const b3 = evaluateBudget(receipt, { tokenMax: 1000 }, budgetState);
+  assert.equal(b3.warnings.length, 0);
+  assert.equal(b3.kill?.budget_type, 'tokens');
+  assert.equal(b3.kill?.reason, 'token budget exceeded');
 });
